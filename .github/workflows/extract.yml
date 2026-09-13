@@ -8,18 +8,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Extract ZIP
+      - name: Find and Extract ZIP
+        shell: bash
         run: |
+          echo "Searching for ZIP file..."
+
+          ZIP_FILE=$(find . -type f -iname "*.zip" \
+            -not -path "./.git/*" \
+            | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: No ZIP file found!"
+            exit 1
+          fi
+
+          echo "ZIP found:"
+          echo "$ZIP_FILE"
+
+          rm -rf extracted
           mkdir -p extracted
-          unzip -o Par30GamesApi.zip -d extracted
+
+          unzip -o "$ZIP_FILE" -d extracted
+
+          echo "Extraction completed!"
+          echo "Extracted files:"
+          find extracted -maxdepth 3 -type f | head -100
 
       - name: Commit extracted files
+        shell: bash
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
           git add extracted
-          git commit -m "Extract project ZIP" || echo "No changes"
+
+          git commit -m "Extract project ZIP" || echo "No changes to commit"
+
           git push
