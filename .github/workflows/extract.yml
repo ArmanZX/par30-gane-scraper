@@ -13,7 +13,7 @@ jobs:
       - name: Extract ZIP
         run: |
           mkdir -p extracted
-          unzip -o source/project.zip -d extracted
+          unzip -o Par30GamesApi.zip -d extracted
 
       - name: Commit extracted files
         run: |
