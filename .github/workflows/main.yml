@@ -1,118 +1,68 @@
-name: Extract, Build, Publish & Release
+name: Build and Publish .NET
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  build-publish:
+  build:
     runs-on: ubuntu-latest
 
     steps:
 
-      # 1. دریافت Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. نصب .NET
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      # 3. پیدا کردن ZIP
-      - name: Find ZIP
-        id: find_zip
-        shell: bash
-        run: |
-          ZIP=$(find . -maxdepth 3 -type f -iname "*.zip" | head -n 1)
-
-          if [ -z "$ZIP" ]; then
-            echo "No ZIP file found!"
-            exit 1
-          fi
-
-          echo "ZIP found: $ZIP"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-
-      # 4. Extract کردن پروژه
-      - name: Extract Project
-        shell: bash
-        run: |
-          rm -rf extracted
-          mkdir extracted
-
-          unzip -o "${{ steps.find_zip.outputs.zip }}" -d extracted
-
-          echo "Extract completed."
-
-      # 5. پیدا کردن فایل csproj
       - name: Find Project
-        id: find_project
+        id: project
         shell: bash
         run: |
           PROJECT=$(find extracted -type f -name "*.csproj" | head -n 1)
 
           if [ -z "$PROJECT" ]; then
-            echo "No .csproj file found!"
+            echo "ERROR: No .csproj found!"
             exit 1
           fi
 
-          echo "Project found: $PROJECT"
+          echo "Project: $PROJECT"
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
 
-      # 6. Restore
       - name: Restore
         run: |
-          dotnet restore "${{ steps.find_project.outputs.project }}"
+          dotnet restore "${{ steps.project.outputs.project }}"
 
-      # 7. Build
       - name: Build
         run: |
           dotnet build \
-            "${{ steps.find_project.outputs.project }}" \
+            "${{ steps.project.outputs.project }}" \
             --configuration Release \
             --no-restore
 
-      # 8. Publish
       - name: Publish
         run: |
           rm -rf publish
 
           dotnet publish \
-            "${{ steps.find_project.outputs.project }}" \
+            "${{ steps.project.outputs.project }}" \
             --configuration Release \
             --no-build \
             --output ./publish
 
-      # 9. ساخت ZIP
-      - name: Create Publish ZIP
+      - name: Create ZIP
         run: |
           mkdir -p release
 
           cd publish
-
-          zip -r "../release/published-app.zip" .
-
+          zip -r ../release/Par30GamesApi-Publish.zip .
           cd ..
 
-      # 10. نمایش محتویات
-      - name: Show Publish Files
-        run: |
-          echo "===== PUBLISH ====="
-          ls -lah publish
-
-          echo "===== RELEASE ====="
-          ls -lah release
-
-      # 11. ساخت Release در GitHub
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload Publish ZIP
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: "v${{ github.run_number }}"
-          name: "Build v${{ github.run_number }}"
-          generate_release_notes: true
-          files: |
-            release/published-app.zip
+          name: Par30GamesApi-Publish
+          path: release/Par30GamesApi-Publish.zip
+          retention-days: 30
